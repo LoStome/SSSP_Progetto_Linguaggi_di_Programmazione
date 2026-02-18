@@ -18,13 +18,13 @@ new_graph(G) :-
     !.
 
 delete_graph(G) :-
-    retractall(vertex(G, _V)),
+    retractall(vertex(G, _)),
     
-    retractall(arc(G, _U, _V, _W)),
+    retractall(arc(G, _, _, _)),
     
-    retractall(distance(G, _V, _D)),
-    retractall(visited(G, _V)),
-    retractall(previous(G, _V, _U)),
+    retractall(distance(G, _, _)),
+    retractall(visited(G, _)),
+    retractall(previous(G, _, _)),
     
     retractall(graph(G)).
 
@@ -51,7 +51,7 @@ list_vertices(G) :-
 new_arc(G, U, V) :- new_arc(G, U, V, 1).
 
 new_arc(G, U, V, _W) :-
-    arc(G, U, V, _W),
+    arc(G, U, V, _),
     !.
 
 new_arc(G, U, V, Weight) :-
@@ -75,7 +75,7 @@ neighbors(G, V, Ns) :-
 
 
 list_arcs(G) :-
-    listing(arc(G, _V, _N, _W)).
+    listing(arc(G, _, _, _)).
 
 list_graph(G) :-
     list_vertices(G),
@@ -85,7 +85,7 @@ list_graph(G) :-
 
 %minHeap
 new_heap(H) :- 
-    heap(H, _S), 
+    heap(H, _Size), 
     !.
 
 new_heap(H) :- 
@@ -93,6 +93,45 @@ new_heap(H) :-
     !.
 
 delete_heap(H) :-
-    retractall(heap_entry(H, _P, _K, _V)),
+    retractall(heap_entry(H, _, _, _)),
 
-    retractall(heap(H, _Size)).
+    retractall(heap(H, _)).
+
+empty(H) :-
+    heap(H, 0).
+
+not_empty(H) :-
+    heap(H, S),
+    S > 0.
+
+head(H, K, V) :-
+    heap_entry(H, 1, K, V).
+
+insert(H, K, V) :-
+    heap(H, S),                        % 1. Recupera dimensione corrente
+    NewS is S + 1,                     % 2. Calcola nuova posizione
+    retract(heap(H, S)),               % 3. Rimuove vecchia dimensione
+    assert(heap(H, NewS)),             % 4. Aggiorna dimensione
+    assert(heap_entry(H, NewS, K, V)), % 5. Inserisce elemento in fondo
+    heapify_up(H, NewS),               % 6. Ripristina proprietà heap
+    !.
+
+% Caso base: Se siamo alla radice (Pos 1), abbiamo finito.
+heapify_up(_, 1) :- !.
+
+% Caso ricorsivo: Confronta con il padre
+heapify_up(H, Pos) :-
+    Pos > 1,                                        %controlla che non siamo alla radice
+    ParentPos is Pos // 2,                          % Calcola posizione padre
+    heap_entry(H, Pos, K, V),                       % Prende chiave/valore corrente
+    heap_entry(H, ParentPos, PK, PV),               % Prende chiave/valore padre
+    
+    (K < PK ->                                      % SE la chiave corrente è minore del padre...
+        retract(heap_entry(H, Pos, K, V)),          % ...Rimuovi corrente
+        retract(heap_entry(H, ParentPos, PK, PV)),  % ...Rimuovi padre
+        assert(heap_entry(H, Pos, PK, PV)),         % ...Metti padre giù
+        assert(heap_entry(H, ParentPos, K, V)),     % ...Metti corrente su
+        heapify_up(H, ParentPos)                    % ...Ricorsione sul padre
+    ;
+        true                                        % ALTRIMENTI: proprietà soddisfatta, stop.
+    ).
