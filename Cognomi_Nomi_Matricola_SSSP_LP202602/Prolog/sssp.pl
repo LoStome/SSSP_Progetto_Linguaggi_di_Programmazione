@@ -108,30 +108,110 @@ head(H, K, V) :-
     heap_entry(H, 1, K, V).
 
 insert(H, K, V) :-
-    heap(H, S),                        % 1. Recupera dimensione corrente
-    NewS is S + 1,                     % 2. Calcola nuova posizione
-    retract(heap(H, S)),               % 3. Rimuove vecchia dimensione
-    assert(heap(H, NewS)),             % 4. Aggiorna dimensione
-    assert(heap_entry(H, NewS, K, V)), % 5. Inserisce elemento in fondo
-    heapify_up(H, NewS),               % 6. Ripristina proprietà heap
+    heap(H, S),                       
+    NewS is S + 1,                     
+    retract(heap(H, S)),               
+    assert(heap(H, NewS)),            
+    assert(heap_entry(H, NewS, K, V)), 
+    heapify_up(H, NewS),              
     !.
 
-% Caso base: Se siamo alla radice (Pos 1), abbiamo finito.
+
 heapify_up(_, 1) :- !.
 
-% Caso ricorsivo: Confronta con il padre
+
 heapify_up(H, Pos) :-
-    Pos > 1,                                        %controlla che non siamo alla radice
-    ParentPos is Pos // 2,                          % Calcola posizione padre
-    heap_entry(H, Pos, K, V),                       % Prende chiave/valore corrente
-    heap_entry(H, ParentPos, PK, PV),               % Prende chiave/valore padre
+    Pos > 1,                                        
+    ParentPos is Pos // 2,                         
+    heap_entry(H, Pos, K, V),                      
+    heap_entry(H, ParentPos, PK, PV),              
     
-    (K < PK ->                                      % SE la chiave corrente è minore del padre...
-        retract(heap_entry(H, Pos, K, V)),          % ...Rimuovi corrente
-        retract(heap_entry(H, ParentPos, PK, PV)),  % ...Rimuovi padre
-        assert(heap_entry(H, Pos, PK, PV)),         % ...Metti padre giù
-        assert(heap_entry(H, ParentPos, K, V)),     % ...Metti corrente su
-        heapify_up(H, ParentPos)                    % ...Ricorsione sul padre
+    (K < PK ->                                      
+        retract(heap_entry(H, Pos, K, V)),         
+        retract(heap_entry(H, ParentPos, PK, PV)),  
+        assert(heap_entry(H, Pos, PK, PV)),        
+        assert(heap_entry(H, ParentPos, K, V)),    
+        heapify_up(H, ParentPos)                    
     ;
-        true                                        % ALTRIMENTI: proprietà soddisfatta, stop.
+        true                                        
     ).
+
+
+extract(H, K, V) :-
+    heap(H, S), 
+    S > 0,
+    
+    heap_entry(H, 1, K, V),
+    retract(heap_entry(H, 1, K, V)),
+    
+    (   S =:= 1 ->
+        retract(heap(H, 1)),
+        assert(heap(H, 0))
+    ;
+        heap_entry(H, S, LastK, LastV),
+        retract(heap_entry(H, S, LastK, LastV)),
+        
+        assert(heap_entry(H, 1, LastK, LastV)),
+        
+        NewS is S - 1,
+        retract(heap(H, S)),
+        assert(heap(H, NewS)),
+        
+        heapify_down(H, 1, NewS)
+    ),
+    !.
+
+
+heapify_down(H, Pos, Size) :-
+    Left is Pos * 2,
+    Right is Pos * 2 + 1,
+    
+    (   Left =< Size ->
+        heap_entry(H, Pos, PosK, _),
+        heap_entry(H, Left, LeftK, _),
+        (   LeftK < PosK -> Min1 = Left ; Min1 = Pos )
+    ;   
+        Min1 = Pos
+    ),
+    
+    (   Right =< Size ->
+        heap_entry(H, Min1, Min1K, _),
+        heap_entry(H, Right, RightK, _),
+        (   RightK < Min1K -> MinPos = Right ; MinPos = Min1 )
+    ;   
+        MinPos = Min1
+    ),
+    
+    (   MinPos \= Pos ->
+        heap_entry(H, Pos, K1, V1),
+        heap_entry(H, MinPos, K2, V2),
+        
+        retract(heap_entry(H, Pos, K1, V1)),
+        retract(heap_entry(H, MinPos, K2, V2)),
+        assert(heap_entry(H, Pos, K2, V2)),
+        assert(heap_entry(H, MinPos, K1, V1)),
+        
+        heapify_down(H, MinPos, Size)
+    ;   
+        true
+    ).
+
+
+modify_key(H, NewKey, OldKey, V) :-
+    heap_entry(H, Pos, OldKey, V),
+    
+    retract(heap_entry(H, Pos, OldKey, V)),
+    assert(heap_entry(H, Pos, NewKey, V)),
+    
+    (   NewKey < OldKey ->
+        heapify_up(H, Pos)
+    ;   NewKey > OldKey ->
+        heap(H, Size),
+        heapify_down(H, Pos, Size)
+    ;   
+        true
+    ),
+    !.
+list_heap(H) :-
+    listing(heap(H, _)),
+    listing(heap_entry(H, _, _, _)).
