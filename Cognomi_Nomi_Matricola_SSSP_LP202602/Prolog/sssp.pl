@@ -6,9 +6,11 @@
 :- dynamic heap/2.       
 :- dynamic heap_entry/4. 
 
+:- dynamic distance/3.
+:- dynamic visited/2.
+:- dynamic previous/3.
 
 %graphs 
-
 new_graph(G) :-
     graph(G),     
     !.         
@@ -215,3 +217,111 @@ modify_key(H, NewKey, OldKey, V) :-
 list_heap(H) :-
     listing(heap(H, _)),
     listing(heap_entry(H, _, _, _)).
+
+
+
+%algoritmo di Dijkstra
+
+change_distance(G, V, NewDist) :-
+    retractall(distance(G, V, _)),
+    assert(distance(G, V, NewDist)),
+    !.
+
+change_previous(G, V, U) :-
+    retractall(previous(G, V, _)),
+    assert(previous(G, V, U)),
+    !.
+
+dijkstra_sssp(G, Source) :-
+    retractall(distance(G, _, _)),
+    retractall(previous(G, _, _)),
+    retractall(visited(G, _)),
+    
+    (heap(G, _) -> delete_heap(G) ; true),
+    new_heap(G),
+    
+    vertices(G, Vs),
+    init_distances(G, Vs),
+    
+    change_distance(G, Source, 0),
+    insert(G, 0, Source),
+    
+    dijkstra_loop(G, G),
+    !.
+
+
+init_distances(_, []).
+init_distances(G, [V|Vs]) :-
+    assert(distance(G, V, inf)),
+    init_distances(G, Vs).
+
+dijkstra_loop(_, Heap) :-
+    empty(Heap), !.
+
+dijkstra_loop(G, Heap) :-
+    extract(Heap, DistU, U),
+    
+    assert(visited(G, U)),
+    
+    neighbors(G, U, Ns),
+    update_neighbors(G, Heap, U, DistU, Ns),
+    
+    dijkstra_loop(G, Heap).
+
+update_neighbors(_, _, _, _, []).
+
+update_neighbors(G, Heap, U, DistU, [arc(G, U, V, Weight) | Ns]) :-
+    ( visited(G, V) ->
+        true
+    ;
+        Alt is DistU + Weight,
+        
+        distance(G, V, DistV),
+        
+        ( DistV == inf ->
+            change_distance(G, V, Alt),
+            change_previous(G, V, U),
+            insert(Heap, Alt, V)
+        ; Alt < DistV ->
+            change_distance(G, V, Alt),
+            change_previous(G, V, U),
+            modify_key(Heap, Alt, DistV, V)
+        ;
+            true
+        )
+    ),
+    update_neighbors(G, Heap, U, DistU, Ns).
+
+
+shortest_path(G, Source, V, Path) :-
+    build_path(G, Source, V, [], Path).
+
+build_path(_, Source, Source, Path, Path) :- !.
+
+build_path(G, Source, Current, Acc, Path) :-
+    previous(G, Current, Prev),               
+    arc(G, Prev, Current, W),                 
+    !,                                        
+    build_path(G, Source, Prev, [arc(G, Prev, Current, W) | Acc], Path).
+
+
+
+% ==========================================
+% SCRIPT DI TEST PER SHORTEST PATH
+% Esegui dalla console digitando: ?- test_shortest_path.
+% ==========================================
+
+test_shortest_path :-
+    % Usiamo il grafo del tuo test precedente
+    delete_graph(mappa), new_graph(mappa),
+    new_vertex(mappa, a), new_vertex(mappa, b), new_vertex(mappa, c), new_vertex(mappa, d),
+    new_arc(mappa, a, b, 10), new_arc(mappa, a, c, 5), new_arc(mappa, c, b, 2), 
+    new_arc(mappa, b, d, 1), new_arc(mappa, c, d, 9),
+
+    % Calcola i percorsi minimi
+    dijkstra_sssp(mappa, a),
+    
+    % Recupera e stampa il percorso per 'd'
+    shortest_path(mappa, a, d, PathD),
+    write('Il cammino minimo da "a" a "d" e\': '), nl,
+    write(PathD), nl, !.
