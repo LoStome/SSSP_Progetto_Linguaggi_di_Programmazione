@@ -303,25 +303,3 @@ build_path(G, Source, Current, Acc, Path) :-
     arc(G, Prev, Current, W),                 
     !,                                        
     build_path(G, Source, Prev, [arc(G, Prev, Current, W) | Acc], Path).
-
-
-
-% ==========================================
-% SCRIPT DI TEST PER SHORTEST PATH
-% Esegui dalla console digitando: ?- test_shortest_path.
-% ==========================================
-
-test_shortest_path :-
-    % Usiamo il grafo del tuo test precedente
-    delete_graph(mappa), new_graph(mappa),
-    new_vertex(mappa, a), new_vertex(mappa, b), new_vertex(mappa, c), new_vertex(mappa, d),
-    new_arc(mappa, a, b, 10), new_arc(mappa, a, c, 5), new_arc(mappa, c, b, 2), 
-    new_arc(mappa, b, d, 1), new_arc(mappa, c, d, 9),
-
-    % Calcola i percorsi minimi
-    dijkstra_sssp(mappa, a),
-    
-    % Recupera e stampa il percorso per 'd'
-    shortest_path(mappa, a, d, PathD),
-    write('Il cammino minimo da "a" a "d" e\': '), nl,
-    write(PathD), nl, !.
