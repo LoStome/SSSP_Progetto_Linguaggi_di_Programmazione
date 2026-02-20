@@ -57,8 +57,7 @@ new_arc(G, U, V, _W) :-
     !.
 
 new_arc(G, U, V, Weight) :-
-    Weight >= 0,          
-    graph(G),        
+    Weight >= 0,              
     new_vertex(G, U),     
     new_vertex(G, V),      
     
@@ -294,55 +293,3 @@ build_path(G, Source, Current, Acc, Path) :-
     arc(G, Prev, Current, W),                 
     !,                                        
     build_path(G, Source, Prev, [arc(G, Prev, Current, W) | Acc], Path).
-
-
-
-% ==========================================
-% SCRIPT DI TEST GLOBALE (PROLOG PURO)
-% Esegui dalla console digitando: ?- esegui_test.
-% ==========================================
-
-esegui_test :-
-    write('--- INIZIO TEST GLOBALE SSSP ---'), nl,
-    
-    % 1. Pulizia e Creazione Grafo
-    write('1. Creazione del grafo di test...'), nl,
-    delete_graph(test_g),
-    new_graph(test_g),
-    
-    new_vertex(test_g, s),
-    new_vertex(test_g, a),
-    new_vertex(test_g, b),
-    new_vertex(test_g, c),
-    new_vertex(test_g, d),
-    
-    % Inserimento archi con pesi strategici
-    new_arc(test_g, s, a, 10),
-    new_arc(test_g, s, c, 5),
-    new_arc(test_g, c, a, 2),  % Scorciatoia per 'a' (costo totale 7 invece di 10)
-    new_arc(test_g, a, b, 1),
-    new_arc(test_g, c, d, 9),
-    new_arc(test_g, b, d, 4),  % Scorciatoia per 'd' passando per 'b' (costo 12 invece di 14)
-    
-    % 2. Esecuzione Dijkstra
-    write('2. Esecuzione dijkstra_sssp(test_g, s)...'), nl,
-    dijkstra_sssp(test_g, s),
-    write('   Algoritmo terminato con successo!'), nl, nl,
-    
-    % 3. Verifica Distanze
-    write('3. VERIFICA DISTANZE CALCOLATE:'), nl,
-    distance(test_g, s, Ds), write('   Distanza s -> s (Atteso: 0)  = '), write(Ds), nl,
-    distance(test_g, a, Da), write('   Distanza s -> a (Atteso: 7)  = '), write(Da), nl,
-    distance(test_g, b, Db), write('   Distanza s -> b (Atteso: 8)  = '), write(Db), nl,
-    distance(test_g, c, Dc), write('   Distanza s -> c (Atteso: 5)  = '), write(Dc), nl,
-    distance(test_g, d, Dd), write('   Distanza s -> d (Atteso: 12) = '), write(Dd), nl, nl,
-    
-    % 4. Verifica Percorso Minimo
-    write('4. VERIFICA CAMMINO MINIMO PER "d":'), nl,
-    shortest_path(test_g, s, d, PathD),
-    write('   Cammino trovato:'), nl,
-    write('   '), write(PathD), nl,
-    
-    % Pulizia finale
-    delete_graph(test_g),
-    write('--- FINE TEST ---'), nl, !.
