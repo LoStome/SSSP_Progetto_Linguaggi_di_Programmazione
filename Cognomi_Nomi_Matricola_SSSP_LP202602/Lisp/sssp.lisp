@@ -16,18 +16,16 @@
 
 
 (defun delete-graph (graph-id)
-  
   (remhash graph-id *graphs*)
-  
-  (dolist (hash-table 
-  (list *vertices* *arcs* *visited* *distances* *previous*))
-    (maphash (lambda (key value)
-               (declare (ignore value)) 
-              
-               (when (and (listp key) (equal (second key) graph-id))
-                
-                 (remhash key hash-table)))
-             hash-table))          
+
+  (mapc (lambda (hash-table)
+          (maphash (lambda (key value)
+                     (declare (ignore value)) 
+                     (when (and (listp key) (equal (second key) graph-id))
+                       (remhash key hash-table)))
+                   hash-table))
+        (list *vertices* *arcs* *visited* *distances* *previous*))
+        
   nil)
 
 
@@ -86,7 +84,7 @@
 
 
 (defun graph-print (graph-id)
-  (format t "=== GRAFO: ~S ===~%" graph-id)
+  (format t "=== GRAFO: ~S ~%" graph-id)
   
 
   (format t "Vertici:~%")
@@ -98,6 +96,34 @@
         
   (format t "Archi:~%")
   (let ((arcs-found nil))
+    (maphash (lambda (key value)
+               (declare (ignore value))
+               (when (and (listp key)
+                          (eql (first key) 'arc)
+                          (equal (second key) graph-id))
+                 (setf arcs-found t)
+                 (format t "  ~S~%" key)))
+             *arcs*)
+    (unless arcs-found
+      (format t "  (Nessun arco trovato)~%")))
+  
+  t)
+
+
+  (defun graph-print (graph-id)
+  (format t "Grafo: ~S~%" graph-id)
+  
+  (format t "Vertici:~%")
+  (let ((verts (graph-vertices graph-id)))
+    (if verts
+        (mapc (lambda (v)
+                (format t "  ~S~%" v))
+              verts)
+        (format t "  (Nessun vertice trovato)~%")))
+        
+  (format t "Archi:~%")
+  (let ((arcs-found nil))
+
     (maphash (lambda (key value)
                (declare (ignore value))
                (when (and (listp key)
