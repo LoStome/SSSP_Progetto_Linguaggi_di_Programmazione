@@ -216,3 +216,46 @@ t)
         t))))
 
 
+(defun heapify-down (array index size)
+  "Fa scendere un elemento verso le foglie finché la sua chiave è maggiore di quella dei figli."
+  (let* ((left (* 2 index))            
+         (right (+ (* 2 index) 1))    
+         (smallest index))            
+    
+    (when (and (<= left size)
+               (< (first (aref array left)) (first (aref array smallest))))
+      (setf smallest left))
+      
+    (when (and (<= right size)
+               (< (first (aref array right)) (first (aref array smallest))))
+      (setf smallest right))
+      
+    (when (not (= smallest index))
+      (let ((temp (aref array index)))
+        (setf (aref array index) (aref array smallest))
+        (setf (aref array smallest) temp))
+        
+      (heapify-down array smallest size))))
+
+(defun heap-extract (heap-id)
+  "Estrae e ritorna l'elemento minimo (K V) dallo heap, ristrutturandolo."
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (when (and heap-rep (> (heap-size heap-rep) 0))
+      (let* ((size (heap-size heap-rep))
+             (array (heap-actual-heap heap-rep))
+             (min-element (aref array 1))
+             (last-element (aref array size)))
+        
+        (setf (aref array 1) last-element)
+        
+        (setf (aref array size) nil)
+        
+        (let ((new-size (- size 1)))
+          (setf (third heap-rep) new-size)
+          
+          (when (> new-size 0)
+            (heapify-down array 1 new-size)))
+        
+        min-element))))
+
+
