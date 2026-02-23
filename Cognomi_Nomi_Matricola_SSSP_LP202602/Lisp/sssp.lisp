@@ -137,3 +137,82 @@
   
   t)
 
+(defparameter *heaps* (make-hash-table :test #'equal))
+(defun new-heap (heap-id &optional (initial-capacity 42))
+  (or (gethash heap-id *heaps*)
+      (setf (gethash heap-id *heaps*)
+            (list 'heap heap-id 0 (make-array initial-capacity)))))
+
+(defun heap-id (heap-rep)
+  (second heap-rep))
+
+(defun heap-size (heap-rep)
+  (third heap-rep))
+
+(defun heap-actual-heap (heap-rep)
+  (fourth heap-rep))
+
+(defun heap-delete (heap-id)
+
+  (remhash heap-id *heaps*)
+
+t)
+
+(defun heap-empty (heap-id)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (if heap-rep
+        (= (heap-size heap-rep) 0)
+        nil)))
+
+(defun heap-not-empty (heap-id)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (if heap-rep
+        (> (heap-size heap-rep) 0)
+        nil)))
+
+(defun heap-head (heap-id)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (when (and heap-rep (> (heap-size heap-rep) 0))
+      (aref (heap-actual-heap heap-rep) 1))))
+
+
+(defun resize-heap (heap-rep)
+  (let* ((old-array (heap-actual-heap heap-rep))
+         (old-capacity (length old-array))
+         (new-array (make-array (* 2 old-capacity))))
+    (replace new-array old-array)
+    (setf (fourth heap-rep) new-array)))
+
+(defun heapify-up (array index)
+  (when (> index 1)
+    (let* ((parent-index (floor index 2))
+           (current-node (aref array index))
+           (parent-node (aref array parent-index)))
+      
+      (when (< (first current-node) (first parent-node))
+        (setf (aref array index) parent-node)
+        (setf (aref array parent-index) current-node)
+        
+        (heapify-up array parent-index)))))
+
+(defun heap-insert (heap-id k v)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (when heap-rep
+      (let* ((current-size (heap-size heap-rep))
+             (current-array (heap-actual-heap heap-rep))
+             (capacity (length current-array))
+             (new-size (+ current-size 1)))
+        
+        (when (>= new-size capacity)
+          (resize-heap heap-rep)
+          (setf current-array (heap-actual-heap heap-rep)))
+        
+        (setf (third heap-rep) new-size)
+        
+        (setf (aref current-array new-size) (list k v))
+        
+        (heapify-up current-array new-size)
+        
+        t))))
+
+
