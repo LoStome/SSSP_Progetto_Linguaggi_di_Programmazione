@@ -217,7 +217,6 @@ t)
 
 
 (defun heapify-down (array index size)
-  "Fa scendere un elemento verso le foglie finché la sua chiave è maggiore di quella dei figli."
   (let* ((left (* 2 index))            
          (right (+ (* 2 index) 1))    
          (smallest index))            
@@ -238,7 +237,6 @@ t)
       (heapify-down array smallest size))))
 
 (defun heap-extract (heap-id)
-  "Estrae e ritorna l'elemento minimo (K V) dallo heap, ristrutturandolo."
   (let ((heap-rep (gethash heap-id *heaps*)))
     (when (and heap-rep (> (heap-size heap-rep) 0))
       (let* ((size (heap-size heap-rep))
@@ -287,6 +285,26 @@ t)
              
           t)))))
 
-
-
+(defun heap-print (heap-id)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (if heap-rep
+      (let* ((size (heap-size heap-rep))
+              (array (heap-actual-heap heap-rep))
+              (capacity (length array)))
+        
+        (format t "~%Minheap: ~S ===~%" heap-id)
+        (format t "Dimensione: ~A~%" size)
+        (format t "Capacita' totale array: ~A~%" capacity)
+        
+        (format t "Nodi attivi (in ordine di array): ~S~%" 
+                (subseq array 1 (+ size 1)))
+        
+        (format t "Array fisico completo: ~S~%" array)
+        (format t "---~%")
+        
+        t)
+        
+      (progn
+        (format t "Lo heap ~S non esiste o e' gia' stato eliminato~%" heap-id)
+        nil))))
 
