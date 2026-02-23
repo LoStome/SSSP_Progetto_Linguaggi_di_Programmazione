@@ -258,4 +258,35 @@ t)
         
         min-element))))
 
+(defun find-heap-element-index (array old-key v index size)
+  (if (> index size)
+      nil 
+      (let ((current (aref array index)))
+        (if (and current
+                 (= (first current) old-key)
+                 (equal (second current) v))
+            index 
+            (find-heap-element-index array old-key v (+ index 1) size)))))
+
+(defun heap-modify-key (heap-id new-key old-key v)
+  (let ((heap-rep (gethash heap-id *heaps*)))
+    (when heap-rep
+      (let* ((size (heap-size heap-rep))
+             (array (heap-actual-heap heap-rep))
+             (pos (find-heap-element-index array old-key v 1 size)))
+        
+        (when pos
+          (setf (aref array pos) (list new-key v))
+          
+          (cond
+            ((< new-key old-key)
+             (heapify-up array pos))
+             
+            ((> new-key old-key)
+             (heapify-down array pos size)))
+             
+          t)))))
+
+
+
 
