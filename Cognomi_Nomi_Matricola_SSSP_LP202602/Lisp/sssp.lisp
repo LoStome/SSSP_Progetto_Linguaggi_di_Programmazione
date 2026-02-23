@@ -58,45 +58,56 @@
     (setf (gethash arc-rep *arcs*) arc-rep)))
 
 
-;; ==========================================
-;; SCRIPT DI TEST PER CREAZIONE ARCHI (LAZY)
-;; Esegui dalla REPL digitando: (test-lazy-arc)
-;; ==========================================
 
-(defun test-lazy-arc ()
-  (format t "--- INIZIO TEST NEW-ARC (LAZY INITIALIZATION) ---~%")
+(defun graph-arcs (graph-id)
+  (let ((acc nil)) 
+    (maphash (lambda (key val)
+               (declare (ignore val))
+               (when (and (listp key) 
+                          (eq (first key) 'arc) 
+                          (equal (second key) graph-id))
+
+                 (push key acc)))
+             *arcs*)
+    acc)) 
+
+
+(defun graph-vertex-neighbors (graph-id vertex-id)
+  (let ((neighbors nil))
+    (maphash (lambda (key value)
+               (declare (ignore value))
+               (when (and (listp key)
+                          (eql (first key) 'arc)
+                          (equal (second key) graph-id)
+                          (equal (third key) vertex-id)) 
+                 (push key neighbors)))
+             *arcs*)
+    neighbors))
+
+
+(defun graph-print (graph-id)
+  (format t "=== GRAFO: ~S ===~%" graph-id)
   
-  ;; 1. Setup: partiamo da un ambiente pulito
-  (format t "1. Pulizia ambiente (elimino 'lazy-map se esiste)...~%")
-  (delete-graph 'lazy-map)
+
+  (format t "Vertici:~%")
+  (let ((verts (graph-vertices graph-id)))
+    (if verts
+        (dolist (v verts)
+          (format t "  ~S~%" v))
+        (format t "  (Nessun vertice trovato)~%")))
+        
+  (format t "Archi:~%")
+  (let ((arcs-found nil))
+    (maphash (lambda (key value)
+               (declare (ignore value))
+               (when (and (listp key)
+                          (eql (first key) 'arc)
+                          (equal (second key) graph-id))
+                 (setf arcs-found t)
+                 (format t "  ~S~%" key)))
+             *arcs*)
+    (unless arcs-found
+      (format t "  (Nessun arco trovato)~%")))
   
-  ;; 2. Creazione diretta dell'arco! NESSUN GRAFO O VERTICE CREATO PRIMA.
-  (format t "2. Eseguo (new-arc 'lazy-map 'milano 'roma 500)...~%")
-  (let ((arc-result (new-arc 'lazy-map 'milano 'roma 500)))
-    (format t "   -> Arco restituito: ~S~%" arc-result)
-    (format t "   -> (Atteso: (ARC LAZY-MAP MILANO ROMA 500))~%~%"))
-    
-  ;; 3. VERIFICA LA MAGIA: Il grafo esiste?
-  (format t "3. Controllo se il grafo 'lazy-map e' stato creato da solo...~%")
-  (format t "   -> (is-graph 'lazy-map) = ~S (Atteso: LAZY-MAP)~%" 
-          (is-graph 'lazy-map))
-          
-  ;; 4. VERIFICA LA MAGIA: I vertici esistono?
-  (format t "~%4. Controllo se i vertici sono stati creati da soli...~%")
-  (multiple-value-bind (v-milano exists-m) (gethash '(vertex lazy-map milano) *vertices*)
-    (format t "   -> Vertice MILANO esiste? ~S (Atteso: T)~%" exists-m))
-    
-  (multiple-value-bind (v-roma exists-r) (gethash '(vertex lazy-map roma) *vertices*)
-    (format t "   -> Vertice ROMA esiste? ~S (Atteso: T)~%" exists-r))
-    
-  ;; 5. VERIFICA LA MAGIA: L'arco è stato registrato?
-  (format t "~%5. Controllo se l'arco e' registrato nella tabella *arcs*...~%")
-  (multiple-value-bind (a-val exists-a) (gethash '(arc lazy-map milano roma 500) *arcs*)
-    (format t "   -> Arco registrato? ~S (Atteso: T)~%" exists-a))
-    
-  ;; 6. Pulizia finale
-  (format t "~%6. Pulizia finale della memoria...~%")
-  (delete-graph 'lazy-map)
-  
-  (format t "--- FINE TEST ---~%")
   t)
+
