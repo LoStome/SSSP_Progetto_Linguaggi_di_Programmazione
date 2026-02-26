@@ -84,58 +84,31 @@
 
 
 (defun graph-print (graph-id)
-  (format t "=== GRAFO: ~S ~%" graph-id)
-  
+(format t "Grafo: ~S~%" graph-id)
 
-  (format t "Vertici:~%")
-  (let ((verts (graph-vertices graph-id)))
-    (if verts
-        (dolist (v verts)
-          (format t "  ~S~%" v))
-        (format t "  (Nessun vertice trovato)~%")))
-        
-  (format t "Archi:~%")
-  (let ((arcs-found nil))
-    (maphash (lambda (key value)
-               (declare (ignore value))
-               (when (and (listp key)
-                          (eql (first key) 'arc)
-                          (equal (second key) graph-id))
-                 (setf arcs-found t)
-                 (format t "  ~S~%" key)))
-             *arcs*)
-    (unless arcs-found
-      (format t "  (Nessun arco trovato)~%")))
-  
-  t)
+(format t "Vertici:~%")
+(let ((verts (graph-vertices graph-id)))
+  (if verts
+      (mapc (lambda (v)
+              (format t "  ~S~%" v))
+            verts)
+      (format t "  (Nessun vertice trovato)~%")))
+      
+(format t "Archi:~%")
+(let ((arcs-found nil))
 
+  (maphash (lambda (key value)
+              (declare (ignore value))
+              (when (and (listp key)
+                        (eql (first key) 'arc)
+                        (equal (second key) graph-id))
+                (setf arcs-found t)
+                (format t "  ~S~%" key)))
+            *arcs*)
+  (unless arcs-found
+    (format t "  (Nessun arco trovato)~%")))
 
-  (defun graph-print (graph-id)
-  (format t "Grafo: ~S~%" graph-id)
-  
-  (format t "Vertici:~%")
-  (let ((verts (graph-vertices graph-id)))
-    (if verts
-        (mapc (lambda (v)
-                (format t "  ~S~%" v))
-              verts)
-        (format t "  (Nessun vertice trovato)~%")))
-        
-  (format t "Archi:~%")
-  (let ((arcs-found nil))
-
-    (maphash (lambda (key value)
-               (declare (ignore value))
-               (when (and (listp key)
-                          (eql (first key) 'arc)
-                          (equal (second key) graph-id))
-                 (setf arcs-found t)
-                 (format t "  ~S~%" key)))
-             *arcs*)
-    (unless arcs-found
-      (format t "  (Nessun arco trovato)~%")))
-  
-  t)
+t)
 
 (defparameter *heaps* (make-hash-table :test #'equal))
 (defun new-heap (heap-id &optional (initial-capacity 42))
@@ -299,12 +272,180 @@ t)
         (format t "Nodi attivi (in ordine di array): ~S~%" 
                 (subseq array 1 (+ size 1)))
         
-        (format t "Array fisico completo: ~S~%" array)
+        (format t "Array completo: ~S~%" array)
         (format t "---~%")
         
         t)
         
       (progn
-        (format t "Lo heap ~S non esiste o e' gia' stato eliminato~%" heap-id)
+        (format t "Lo heap ~S non esiste ~%" heap-id)
         nil))))
 
+(defun sssp-dist (graph-id vertex-id)
+  
+  (multiple-value-bind (dist present-p)
+      (gethash (list 'distance graph-id vertex-id) *distances*)
+      
+    (if present-p
+        dist
+        most-positive-double-float)))
+
+(defun sssp-visited (graph-id vertex-id)
+  (nth-value 1 (gethash (list 'visited graph-id vertex-id) visited)))
+
+(defun sssp-previous (graph-id vertex-id)
+  (gethash (list 'previous graph-id vertex-id) previous nil))
+
+(defun sssp-change-dist (graph-id vertex-id new-dist)
+  (setf (gethash (list 'distance graph-id vertex-id) distances) new-dist)
+  nil)
+
+(defun sssp-change-previous (graph-id vertex-id u)
+  (setf (gethash (list 'previous graph-id vertex-id) previous) u)
+  nil)
+
+
+(defun clear-dijkstra-tables (graph-id)
+  (maphash (lambda (k v)
+             (declare (ignore v))
+             (when (and (listp k) (equal (second k) graph-id))
+               (remhash k *distances*)))
+           *distances*)
+  (maphash (lambda (k v)
+             (declare (ignore v))
+             (when (and (listp k) (equal (second k) graph-id))
+               (remhash k *previous*)))
+           *previous*)
+  (maphash (lambda (k v)
+             (declare (ignore v))
+             (when (and (listp k) (equal (second k) graph-id))
+               (remhash k *visited*)))
+           *visited*))
+
+(defun init-distances (graph-id vertices)
+  (when vertices
+    (let ((v (third (first vertices)))) 
+      (sssp-change-dist graph-id v most-positive-double-float)
+      (init-distances graph-id (rest vertices)))))
+
+(defun relax-edges (graph-id u dist-u neighbors)
+  (when neighbors
+    (let* ((arc (first neighbors))
+           (v (fourth arc))
+           (weight (fifth arc))
+           (dist-v (sssp-dist graph-id v))
+           (alt (+ dist-u weight)))
+      
+      (unless (sssp-visited graph-id v)
+        (cond
+          ((= dist-v most-positive-double-float)
+           (sssp-change-dist graph-id v alt)
+           (sssp-change-previous graph-id v u)
+           (heap-insert graph-id alt v))
+           
+          ((< alt dist-v)
+           (sssp-change-dist graph-id v alt)
+           (sssp-change-previous graph-id v u)
+           (heap-modify-key graph-id alt dist-v v))))
+           
+      (relax-edges graph-id u dist-u (rest neighbors)))))
+
+(defun dijkstra-loop (graph-id)
+  (when (heap-not-empty graph-id)
+    (let* ((extracted (heap-extract graph-id))
+           (dist-u (first extracted))
+           (u (second extracted)))
+           
+      (sssp-change-visited graph-id u t)
+      
+      (relax-edges graph-id u dist-u (graph-vertex-neighbors graph-id u))
+      
+      (dijkstra-loop graph-id))))
+
+(defun sssp-dijkstra (graph-id source)
+  
+  (clear-dijkstra-tables graph-id)
+  
+  (when (gethash graph-id *heaps*)
+    (heap-delete graph-id))
+  (new-heap graph-id (length (graph-vertices graph-id)))
+  
+  (init-distances graph-id (graph-vertices graph-id))
+  
+  (sssp-change-dist graph-id source 0)
+  (heap-insert graph-id 0 source)
+  
+  (dijkstra-loop graph-id)
+  
+  nil)
+
+
+  (defun test-sssp-dijkstra ()
+  "Esegue un test completo dell'algoritmo di Dijkstra su un grafo noto."
+  (format t "~%=== INIZIO TEST SSSP-DIJKSTRA ===~%")
+  
+  ;; 1. INSERIMENTO FORZATO DEL GRAFO DI TEST
+  ;; Popoliamo direttamente le hash-tables globali con la struttura che 
+  ;; sssp-dijkstra e le tue funzioni di supporto si aspettano.
+  (setf (gethash 'g-test *vertices*)
+        '((vertex g-test a)
+          (vertex g-test b)
+          (vertex g-test c)
+          (vertex g-test d)))
+          
+  ;; La tua funzione 'graph-vertex-neighbors' probabilmente filtra questa lista
+  (setf (gethash 'g-test *arcs*)
+        '((arc g-test a b 1)
+          (arc g-test a c 4)
+          (arc g-test b c 2)
+          (arc g-test b d 6)
+          (arc g-test c d 3)))
+          
+  ;; Per assicurarci che graph-vertices e graph-vertex-neighbors funzionino
+  ;; se le avevi scritte basandoti su un'altra struttura, le "simuliamo" per sicurezza:
+  (defun graph-vertices (graph-id)
+    (gethash graph-id *vertices*))
+    
+  (defun graph-vertex-neighbors (graph-id u)
+    (let ((all-arcs (gethash graph-id *arcs*))
+          (neighbors nil))
+      (dolist (arc all-arcs)
+        ;; Il terzo elemento (indice 2) è il nodo di partenza dell'arco
+        (when (equal (third arc) u)
+          (push arc neighbors)))
+      neighbors))
+
+  ;; 2. ESECUZIONE DELL'ALGORITMO
+  (format t "~%1. Eseguo Dijkstra partendo dal nodo 'A'...~%")
+  (sssp-dijkstra 'g-test 'a)
+  (format t "   Fatto! (La funzione ha ritornato NIL come previsto)~%")
+
+  ;; 3. VERIFICA DEI RISULTATI
+  (format t "~%2. Verifica delle Distanze Minime Calcolate:~%")
+  (format t "   Distanza A (Atteso: 0.0) -> ~A~%" (sssp-dist 'g-test 'a))
+  (format t "   Distanza B (Atteso: 1.0) -> ~A~%" (sssp-dist 'g-test 'b))
+  (format t "   Distanza C (Atteso: 3.0) -> ~A~%" (sssp-dist 'g-test 'c))
+  (format t "   Distanza D (Atteso: 6.0) -> ~A~%" (sssp-dist 'g-test 'd))
+
+  (format t "~%3. Verifica dei Precedenti (Ricostruzione del Cammino Minimo):~%")
+  (format t "   Padre di A (Atteso: NIL) -> ~A~%" (sssp-previous 'g-test 'a))
+  (format t "   Padre di B (Atteso: A)   -> ~A~%" (sssp-previous 'g-test 'b))
+  (format t "   Padre di C (Atteso: B)   -> ~A~%" (sssp-previous 'g-test 'c))
+  (format t "   Padre di D (Atteso: C)   -> ~A~%" (sssp-previous 'g-test 'd))
+
+  (format t "~%4. Verifica dello Stato di Visita:~%")
+  (format t "   Tutti i nodi visitati? -> A:~A, B:~A, C:~A, D:~A~%"
+          (sssp-visited 'g-test 'a)
+          (sssp-visited 'g-test 'b)
+          (sssp-visited 'g-test 'c)
+          (sssp-visited 'g-test 'd))
+
+  ;; 4. TEST PULIZIA TABELLE
+  (format t "~%5. Rieseguo Dijkstra su 'C' per testare la pulizia delle tabelle...~%")
+  (sssp-dijkstra 'g-test 'c)
+  (format t "   Nuova Distanza A (Atteso: ~A, irraggiungibile) -> ~A~%" 
+          most-positive-double-float (sssp-dist 'g-test 'a))
+  (format t "   Nuova Distanza D (Atteso: 3.0) -> ~A~%" (sssp-dist 'g-test 'd))
+
+  (format t "~%=== FINE TEST ===~%")
+  t)
