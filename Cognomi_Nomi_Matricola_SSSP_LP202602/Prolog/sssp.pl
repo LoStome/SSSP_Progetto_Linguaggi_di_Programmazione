@@ -293,3 +293,7 @@ build_path(G, Source, Current, Acc, Path) :-
     arc(G, Prev, Current, W),                 
     !,                                        
     build_path(G, Source, Prev, [arc(G, Prev, Current, W) | Acc], Path).
+
+
+
+    
