@@ -388,12 +388,13 @@ t)
       acc
       (let ((prev (sssp-previous graph-id current)))
         (if (null prev)
-          nil
-          (let* ((neighbors (graph-vertex-neighbors graph-id prev))
-              (edge(find-if(lambda(arc)(equal(fourth arc)current))neighbors)))
-            (if edge
-              (build-path prev (cons edge acc))
-              nil)))))))
+            nil
+            (let* ((neighbors (graph-vertex-neighbors graph-id prev))
+                (edge (find-if (lambda (arc) (equal (fourth arc)
+                 current)) neighbors)))
+              (if edge
+                (build-path prev (cons edge acc))
+                nil)))))))
     (build-path v nil)))
 
 
