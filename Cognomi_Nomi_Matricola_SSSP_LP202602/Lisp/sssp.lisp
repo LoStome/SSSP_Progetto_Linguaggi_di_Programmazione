@@ -291,19 +291,22 @@ t)
         most-positive-double-float)))
 
 (defun sssp-visited (graph-id vertex-id)
-  (nth-value 1 (gethash (list 'visited graph-id vertex-id) visited)))
+  (nth-value 1 (gethash (list 'visited graph-id vertex-id) *visited*)))
 
 (defun sssp-previous (graph-id vertex-id)
-  (gethash (list 'previous graph-id vertex-id) previous nil))
+  (gethash (list 'previous graph-id vertex-id) *previous* nil))
 
 (defun sssp-change-dist (graph-id vertex-id new-dist)
-  (setf (gethash (list 'distance graph-id vertex-id) distances) new-dist)
+  (setf (gethash (list 'distance graph-id vertex-id) *distances*) new-dist)
   nil)
 
 (defun sssp-change-previous (graph-id vertex-id u)
-  (setf (gethash (list 'previous graph-id vertex-id) previous) u)
+  (setf (gethash (list 'previous graph-id vertex-id) *previous*) u)
   nil)
 
+(defun sssp-change-visited (graph-id v val)
+  (setf (gethash (list 'visited graph-id v) *visited*) val)
+  nil)
 
 (defun clear-dijkstra-tables (graph-id)
   (maphash (lambda (k v)
@@ -379,73 +382,19 @@ t)
   
   nil)
 
+(defun shortest-path (graph-id u v)
+  (labels ((build-path (current acc)
+    (if (equal current u)
+      acc
+      (let ((prev (sssp-previous graph-id current)))
+        (if (null prev)
+          nil
+          (let* ((neighbors (graph-vertex-neighbors graph-id prev))
+              (edge(find-if(lambda(arc)(equal(fourth arc)current))neighbors)))
+            (if edge
+              (build-path prev (cons edge acc))
+              nil)))))))
+    (build-path v nil)))
 
-  (defun test-sssp-dijkstra ()
-  "Esegue un test completo dell'algoritmo di Dijkstra su un grafo noto."
-  (format t "~%=== INIZIO TEST SSSP-DIJKSTRA ===~%")
-  
-  ;; 1. INSERIMENTO FORZATO DEL GRAFO DI TEST
-  ;; Popoliamo direttamente le hash-tables globali con la struttura che 
-  ;; sssp-dijkstra e le tue funzioni di supporto si aspettano.
-  (setf (gethash 'g-test *vertices*)
-        '((vertex g-test a)
-          (vertex g-test b)
-          (vertex g-test c)
-          (vertex g-test d)))
-          
-  ;; La tua funzione 'graph-vertex-neighbors' probabilmente filtra questa lista
-  (setf (gethash 'g-test *arcs*)
-        '((arc g-test a b 1)
-          (arc g-test a c 4)
-          (arc g-test b c 2)
-          (arc g-test b d 6)
-          (arc g-test c d 3)))
-          
-  ;; Per assicurarci che graph-vertices e graph-vertex-neighbors funzionino
-  ;; se le avevi scritte basandoti su un'altra struttura, le "simuliamo" per sicurezza:
-  (defun graph-vertices (graph-id)
-    (gethash graph-id *vertices*))
-    
-  (defun graph-vertex-neighbors (graph-id u)
-    (let ((all-arcs (gethash graph-id *arcs*))
-          (neighbors nil))
-      (dolist (arc all-arcs)
-        ;; Il terzo elemento (indice 2) è il nodo di partenza dell'arco
-        (when (equal (third arc) u)
-          (push arc neighbors)))
-      neighbors))
 
-  ;; 2. ESECUZIONE DELL'ALGORITMO
-  (format t "~%1. Eseguo Dijkstra partendo dal nodo 'A'...~%")
-  (sssp-dijkstra 'g-test 'a)
-  (format t "   Fatto! (La funzione ha ritornato NIL come previsto)~%")
-
-  ;; 3. VERIFICA DEI RISULTATI
-  (format t "~%2. Verifica delle Distanze Minime Calcolate:~%")
-  (format t "   Distanza A (Atteso: 0.0) -> ~A~%" (sssp-dist 'g-test 'a))
-  (format t "   Distanza B (Atteso: 1.0) -> ~A~%" (sssp-dist 'g-test 'b))
-  (format t "   Distanza C (Atteso: 3.0) -> ~A~%" (sssp-dist 'g-test 'c))
-  (format t "   Distanza D (Atteso: 6.0) -> ~A~%" (sssp-dist 'g-test 'd))
-
-  (format t "~%3. Verifica dei Precedenti (Ricostruzione del Cammino Minimo):~%")
-  (format t "   Padre di A (Atteso: NIL) -> ~A~%" (sssp-previous 'g-test 'a))
-  (format t "   Padre di B (Atteso: A)   -> ~A~%" (sssp-previous 'g-test 'b))
-  (format t "   Padre di C (Atteso: B)   -> ~A~%" (sssp-previous 'g-test 'c))
-  (format t "   Padre di D (Atteso: C)   -> ~A~%" (sssp-previous 'g-test 'd))
-
-  (format t "~%4. Verifica dello Stato di Visita:~%")
-  (format t "   Tutti i nodi visitati? -> A:~A, B:~A, C:~A, D:~A~%"
-          (sssp-visited 'g-test 'a)
-          (sssp-visited 'g-test 'b)
-          (sssp-visited 'g-test 'c)
-          (sssp-visited 'g-test 'd))
-
-  ;; 4. TEST PULIZIA TABELLE
-  (format t "~%5. Rieseguo Dijkstra su 'C' per testare la pulizia delle tabelle...~%")
-  (sssp-dijkstra 'g-test 'c)
-  (format t "   Nuova Distanza A (Atteso: ~A, irraggiungibile) -> ~A~%" 
-          most-positive-double-float (sssp-dist 'g-test 'a))
-  (format t "   Nuova Distanza D (Atteso: 3.0) -> ~A~%" (sssp-dist 'g-test 'd))
-
-  (format t "~%=== FINE TEST ===~%")
-  t)
+ 
